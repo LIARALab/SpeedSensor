@@ -95,7 +95,6 @@ func (a *EventsAnalyzer) start() {
 
 			break
 		case <-after_time.C:
-			Log.Debug("resetting.")
 			mutex_Analyzer.Lock()
 			exited := false
 			for i := 0; i < 3; i++ {

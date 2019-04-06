@@ -1,13 +1,25 @@
 package speedsensor
 
 import (
-	"fmt"
-	Log "github.com/kevinchapron/BasicLogger/Logging"
+	"github.com/kevinchapron/FSHK/speedsensor/BLE"
 	"sync"
 	"time"
 )
 
 var mutex_Analyzer sync.Mutex
+
+type FullEvent struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Sensors   []uint
+
+	BLEData *[]BLE.BLEItem
+
+	ChosenAddr       string
+	DistanceTraveled int
+	SpeedKMH         float64
+	SpeedMS          float64
+}
 
 type AnalyzerEvent struct {
 	data      *ADSxValue
@@ -18,12 +30,21 @@ type EventsAnalyzer struct {
 	new_event     chan *AnalyzerEvent
 	events        []*AnalyzerEvent
 	cross_through map[uint]int
+
+	callbackEvent *func(event FullEvent)
 }
 
 func (a *EventsAnalyzer) addEvent(event *AnalyzerEvent) {
 	mutex_Analyzer.Lock()
 
-	//Log.Debug(fmt.Sprintf("EVENT #%d (%.2f), at %v. -- ADDED",event.sensor,event.data.Value,event.timestamp.Format("2006-01-02 15:04:05.123456")))
+	//Logging.Debug(fmt.Sprintf("EVENT #%d (%.2f), at %v. -- ADDED",event.sensor,event.data.Value,event.timestamp.Format("2006-01-02 15:04:05.123456")))
+	if len(a.events) > 0 && a.events[len(a.events)-1].sensor != event.sensor {
+		last := a.events[len(a.events)-1]
+		if last.sensor+1 != event.sensor && last.sensor-1 != event.sensor {
+			a.events = a.events[:len(a.events)-1]
+		}
+	}
+	//Logging.Debug(a.events)
 	a.events = append(a.events, event)
 	a.cross_through[event.sensor]++
 
@@ -38,50 +59,6 @@ func (a *EventsAnalyzer) reset() {
 		a.cross_through[uint(i)] = 0
 	}
 	mutex_Analyzer.Unlock()
-}
-
-func (a *EventsAnalyzer) computeSpeed() {
-	var data = make([]*AnalyzerEvent, len(a.events))
-	copy(data, a.events)
-
-	Log.Debug("Computing speed : ")
-	var sensors []uint
-	for _, v := range data {
-		Log.Debug(fmt.Sprintf("\tSensor: %d\tDate: %v", v.sensor, v.timestamp.Format("2006-01-02 15:04:05")))
-
-		if len(sensors) == 0 {
-			sensors = append(sensors, v.sensor)
-		} else {
-			if sensors[len(sensors)-1] != v.sensor {
-				sensors = append(sensors, v.sensor)
-			}
-		}
-	}
-	Log.Debug("Speed computed.")
-
-	if len(sensors) == 1 {
-		return
-	}
-
-	distance := 0
-	for i, sensor := range sensors {
-		if i == 0 {
-			continue
-		}
-		distance += IntAbs(int(sensor)-int(sensors[i-1])) * IR_SENSOR_DISTANCE_BETWEEN
-	}
-
-	elapsed_time := data[len(data)-1].timestamp.Sub(data[0].timestamp).Seconds()
-	speed_ms := (float64(distance) / 100.0) / elapsed_time
-	speed_kmh := ((float64(distance) / 100000) / elapsed_time) * 3600
-
-	Log.Debug("Sensors direction : ", sensors)
-	Log.Debug("Starting_time :", data[0].timestamp.Format("2006-01-02 15:04:05"))
-	Log.Debug("Ending_time :", data[len(data)-1].timestamp.Format("2006-01-02 15:04:05"))
-	Log.Debug("-----------")
-	Log.Debug("Distance : ", distance)
-	Log.Debug(fmt.Sprintf("Time elapsed : %.3f", elapsed_time))
-	Log.Debug(fmt.Sprintf("VITESSE : %.3f m/s (%.3f km/h).", speed_ms, speed_kmh))
 }
 
 func (a *EventsAnalyzer) start() {
@@ -115,4 +92,39 @@ func (a *EventsAnalyzer) start() {
 			break
 		}
 	}
+}
+
+func (a *EventsAnalyzer) computeSpeed() {
+	var data = make([]*AnalyzerEvent, len(a.events))
+	copy(data, a.events)
+
+	var sensors []uint
+	for _, v := range data {
+		if len(sensors) == 0 {
+			sensors = append(sensors, v.sensor)
+		} else {
+			if sensors[len(sensors)-1] != v.sensor {
+				sensors = append(sensors, v.sensor)
+			}
+		}
+	}
+
+	if len(sensors) == 1 {
+		return
+	}
+
+	starting_time := data[0].timestamp
+	ending_time := data[len(data)-1].timestamp
+
+	data_ble := BLE.GetBLEDevice().Scanner.GetDataBetweenTimes(starting_time, ending_time)
+
+	(*a.callbackEvent)(FullEvent{
+		BLEData:   &data_ble,
+		StartTime: starting_time,
+		EndTime:   ending_time,
+		Sensors:   sensors,
+	})
+}
+func (a *EventsAnalyzer) SetCallbackForEvents(f *func(event FullEvent)) {
+	a.callbackEvent = f
 }

@@ -15,7 +15,7 @@ type Analyzer struct {
 	calibrating_values_avg map[uint]float64
 	calibrating_values_std map[uint]float64
 
-	analyzing_events EventsAnalyzer
+	AnalyzerOfEvents EventsAnalyzer
 }
 type AnalyzerType int
 
@@ -91,7 +91,7 @@ func (a *Analyzer) finishCalibration() {
 	for i = 0; i < 3; i++ {
 		Log.Info(fmt.Sprintf("\t\t%d => (%.2f ± %.2f)", i, avg[i], std[i]))
 	}
-	go _analyzer.analyzing_events.start()
+	go _analyzer.AnalyzerOfEvents.start()
 }
 func (a *Analyzer) dataReceived(b *ADSxDATA) {
 	for index, value := range b.Values {
@@ -112,16 +112,15 @@ func (a *Analyzer) dataReceived(b *ADSxDATA) {
 	}
 }
 func (a *Analyzer) eventReceived(event AnalyzerEvent) {
-	//Log.Debug(fmt.Sprintf("EVENT #%d (%.2f), at %v.",event.sensor,event.data.Value,event.timestamp.Format("2006-01-02 15:04:05.123456")))
-	a.analyzing_events.new_event <- &event
+	a.AnalyzerOfEvents.new_event <- &event
 }
 
 func GetAnalyzer() *Analyzer {
 	if _analyzer == nil {
 		_analyzer = &Analyzer{}
-		_analyzer.analyzing_events.cross_through = make(map[uint]int)
-		_analyzer.analyzing_events.new_event = make(chan *AnalyzerEvent)
-		_analyzer.analyzing_events.reset()
+		_analyzer.AnalyzerOfEvents.cross_through = make(map[uint]int)
+		_analyzer.AnalyzerOfEvents.new_event = make(chan *AnalyzerEvent)
+		_analyzer.AnalyzerOfEvents.reset()
 	}
 	return _analyzer
 }

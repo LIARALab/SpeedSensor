@@ -5,6 +5,8 @@ import (
 	Log "github.com/kevinchapron/BasicLogger/Logging"
 	"github.com/kevinchapron/FSHK/speedsensor"
 	"github.com/kevinchapron/FSHK/speedsensor/BLE"
+	"math"
+	"sort"
 	"time"
 )
 
@@ -27,16 +29,55 @@ var EventCallback = func(event speedsensor.FullEvent) {
 		}
 		data_ble[item.Addr].AllRSSI = append(data_ble[item.Addr].AllRSSI, item.RSSI)
 	}
-	min_distance := 9999.9
-	min_distance_addr := ""
+
+	var features []speedsensor.BLEFeatures
+
 	for addr, item := range data_ble {
-		current_distance := item.DistanceOfRSSIs(item.AllRSSI)
-		if min_distance > current_distance {
-			min_distance = current_distance
-			min_distance_addr = addr
+		rssis := item.AllRSSI
+
+		if len(rssis) == 0 {
+			continue
+		}
+		sort.Sort(sort.Reverse(sort.Float64Slice(rssis)))
+
+		// Compute the RSSI value
+		median_rssi := rssis[int(len(rssis)/2)]
+		mean_rssi := 0.0
+		stdev_rssi := 0.0
+		for _, rssi := range rssis {
+			mean_rssi += rssi
+		}
+		mean_rssi /= float64(len(rssis))
+		for _, rssi := range rssis {
+			stdev_rssi += math.Pow(rssi-mean_rssi, 2)
+		}
+		stdev_rssi /= float64(len(rssis))
+		stdev_rssi = math.Sqrt(stdev_rssi)
+
+		features = append(features, speedsensor.BLEFeatures{
+			Addr:   addr,
+			Mean:   mean_rssi,
+			Median: median_rssi,
+			Stdev:  stdev_rssi,
+		})
+	}
+
+	sort.Slice(features, func(i, j int) bool {
+		return features[i].Stdev > features[j].Stdev
+	})
+	if len(features) > 2 {
+		features = features[int(len(features)/2)+1:]
+		sort.Slice(features, func(i, j int) bool {
+			return features[i].Median > features[j].Median
+		})
+		event.ChosenAddr = features[0].Addr
+	} else {
+		if len(features) == 1 {
+			event.ChosenAddr = features[0].Addr
+		} else {
+			event.ChosenAddr = "00:00:00:00:00:00"
 		}
 	}
-	event.ChosenAddr = min_distance_addr
 
 	// Sensor - Know the distance traveled
 	distance_traveled := 0
@@ -46,6 +87,20 @@ var EventCallback = func(event speedsensor.FullEvent) {
 		}
 		distance_traveled += speedsensor.IntAbs(int(sensor)-int(event.Sensors[i-1])) * speedsensor.IR_SENSOR_DISTANCE_BETWEEN
 	}
+	// Sensor - Know the time between first occurence at first sensor and last ocurrence at last sensor
+	first_time := (*(*event.EventData)[0]).Timestamp
+	var last_time time.Time
+	last_sensor := event.Sensors[len(event.Sensors)-1]
+
+	for i := len(*event.EventData) - 1; i >= 0; i-- {
+		if (*(*event.EventData)[i]).Sensor == last_sensor {
+			continue
+		}
+		last_time = (*(*event.EventData)[i+1]).Timestamp
+		break
+	}
+	event.StartTime = first_time
+	event.EndTime = last_time
 
 	elapsed_time := event.EndTime.Sub(event.StartTime).Seconds()
 	speed_ms := (float64(distance_traveled) / 100.0) / elapsed_time

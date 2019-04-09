@@ -152,6 +152,9 @@ func (bleScanner *BLEScanner) GetDataBetweenTimes(from time.Time, to time.Time) 
 	from_index := -1
 	to_index := -1
 
+	from = from.Add(-time.Second * 2)
+	to = to.Add(time.Second * 2)
+
 	bleScanner.ContinuousMutex.Lock()
 	//Logging.Debug("Looking for:", from,"and",to)
 	for index, item := range bleScanner.ContinuousData {

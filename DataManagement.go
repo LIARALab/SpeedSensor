@@ -104,8 +104,8 @@ func (a *Analyzer) dataReceived(b *ADSxDATA) {
 		if !(min_value <= value.Value && max_value >= value.Value) {
 			a.eventReceived(AnalyzerEvent{
 				data:      value,
-				sensor:    index,
-				timestamp: b.Timestamp,
+				Sensor:    index,
+				Timestamp: b.Timestamp,
 			})
 			break
 		}

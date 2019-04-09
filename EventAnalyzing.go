@@ -13,7 +13,8 @@ type FullEvent struct {
 	EndTime   time.Time
 	Sensors   []uint
 
-	BLEData *[]BLE.BLEItem
+	EventData *[]*AnalyzerEvent
+	BLEData   *[]BLE.BLEItem
 
 	ChosenAddr       string
 	DistanceTraveled int
@@ -23,8 +24,8 @@ type FullEvent struct {
 
 type AnalyzerEvent struct {
 	data      *ADSxValue
-	sensor    uint
-	timestamp time.Time
+	Sensor    uint
+	Timestamp time.Time
 }
 type EventsAnalyzer struct {
 	new_event     chan *AnalyzerEvent
@@ -38,15 +39,15 @@ func (a *EventsAnalyzer) addEvent(event *AnalyzerEvent) {
 	mutex_Analyzer.Lock()
 
 	//Logging.Debug(fmt.Sprintf("EVENT #%d (%.2f), at %v. -- ADDED",event.sensor,event.data.Value,event.timestamp.Format("2006-01-02 15:04:05.123456")))
-	if len(a.events) > 0 && a.events[len(a.events)-1].sensor != event.sensor {
+	if len(a.events) > 0 && a.events[len(a.events)-1].Sensor != event.Sensor {
 		last := a.events[len(a.events)-1]
-		if last.sensor+1 != event.sensor && last.sensor-1 != event.sensor {
+		if last.Sensor+1 != event.Sensor && last.Sensor-1 != event.Sensor {
 			a.events = a.events[:len(a.events)-1]
 		}
 	}
 	//Logging.Debug(a.events)
 	a.events = append(a.events, event)
-	a.cross_through[event.sensor]++
+	a.cross_through[event.Sensor]++
 
 	mutex_Analyzer.Unlock()
 }
@@ -101,10 +102,10 @@ func (a *EventsAnalyzer) computeSpeed() {
 	var sensors []uint
 	for _, v := range data {
 		if len(sensors) == 0 {
-			sensors = append(sensors, v.sensor)
+			sensors = append(sensors, v.Sensor)
 		} else {
-			if sensors[len(sensors)-1] != v.sensor {
-				sensors = append(sensors, v.sensor)
+			if sensors[len(sensors)-1] != v.Sensor {
+				sensors = append(sensors, v.Sensor)
 			}
 		}
 	}
@@ -113,15 +114,38 @@ func (a *EventsAnalyzer) computeSpeed() {
 		return
 	}
 
-	starting_time := data[0].timestamp
-	ending_time := data[len(data)-1].timestamp
+	for sensors[len(sensors)-1] != IR_SENSOR_ID_FIRST && sensors[len(sensors)-1] != IR_SENSOR_ID_LAST {
+		sensors = sensors[:len(sensors)-1]
+		to_delete := data[len(data)-1].Sensor
+		for i := len(data) - 1; i >= 0; i-- {
+			if data[i].Sensor == to_delete {
+				continue
+			}
+			data = data[:i]
+			break
+		}
+	}
+
+	for sensors[0] != IR_SENSOR_ID_FIRST && sensors[0] != IR_SENSOR_ID_LAST {
+		sensors = sensors[1:]
+		to_delete := data[len(data)-1].Sensor
+		for i := 0; i < len(data); i++ {
+			if data[i].Sensor == to_delete {
+				continue
+			}
+			data = data[i:]
+			break
+		}
+	}
+
+	starting_time := data[0].Timestamp
+	ending_time := data[len(data)-1].Timestamp
 
 	data_ble := BLE.GetBLEDevice().Scanner.GetDataBetweenTimes(starting_time, ending_time)
 
 	(*a.callbackEvent)(FullEvent{
 		BLEData:   &data_ble,
-		StartTime: starting_time,
-		EndTime:   ending_time,
+		EventData: &data,
 		Sensors:   sensors,
 	})
 }

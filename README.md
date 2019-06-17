@@ -52,5 +52,30 @@ As explained in our paper [1], we also provide our collected data in the followi
 [1] Chapron, Kévin; Bouchard ,Kévin; Gaboury, Sébastien. (2019, September). "Real-time Gait Speed Evaluation at Home". GOODTECHS 2019 - 5th EAI International Conference on Smart Objects and Technologies for Social Good.
 
 
+# Authors
+---
+This work was achieved by both a Ph.D. student and Professors affiliated to the **[LIARA laboratory](http://liara.uqac.ca/)** at the Uniersité du Québec à Chicoutimi.
+
+* __[Kévin Chapron](kevin.chapron1@uqac.ca)__, LIARA Laboratory, Université du Québec à Chicoutimi, QC, Canada.
+* __[Kévin Bouchard](Kevin_Bouchard@uqac.ca)__, LIARA Laboratory, Université du Québec à Chicoutimi, QC, Canada.
+* __[Sébastien Gaboury](Sebastien_Gaboury@uqac.ca)__, LIARA Laboratory, Université du Québec à Chicoutimi, QC, Canada.
+
+Licence
+---
+Copyright 2019 LIARA Laboratory.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+
 [hardware_schema]: https://github.com/LIARALab/SpeedSensor/raw/master/hardware/Schema_device_bw.png "Hardware schematics"
 [full_device]: https://github.com/LIARALab/SpeedSensor/raw/master/hardware/Photo_device_bw.png "Hardware Aesthetics"

@@ -34,7 +34,8 @@ Here is the devices required to build this module. We use the maker's link, to l
 ### Aesthetics
 
 The 3D-model is provided in the directory ```hardware/```.
-The main unit is in the file ```hardware/main_unit.stl``` and both surrounding modules are available in ```hardware/left_unit.stl``` & ```hardware/right_unit.stl```.
+Every unit has a _base_ and a _cover_ file.
+The main unit is in the file ```hardware/main_unit_(base|cover).stl``` and both surrounding modules are available in ```hardware/left_unit_(base|cover).stl``` & ```hardware/right_unit_(base|cover).stl```.
 Every case has holes in its side, to be able to connect everything together. To hide wires, we chose to use an Expandable Sleeving Cable Wire (coming through those holes).
 
 The whole module fully developed is shown in the next figure.

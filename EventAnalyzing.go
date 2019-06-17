@@ -1,7 +1,9 @@
 package speedsensor
 
 import (
+	"github.com/kevinchapron/BasicLogger/Logging"
 	"github.com/kevinchapron/FSHK/speedsensor/BLE"
+	"github.com/montanaflynn/stats"
 	"sync"
 	"time"
 )
@@ -60,6 +62,7 @@ func (a *EventsAnalyzer) reset() {
 		a.cross_through[uint(i)] = 0
 	}
 	mutex_Analyzer.Unlock()
+	//Logging.Debug("----")
 }
 
 func (a *EventsAnalyzer) start() {
@@ -99,6 +102,8 @@ func (a *EventsAnalyzer) computeSpeed() {
 	var data = make([]*AnalyzerEvent, len(a.events))
 	copy(data, a.events)
 
+	// Verification: Suppression des doublons (ex: [1 1 1 1] => [1]
+	Logging.Debug("STEP-1")
 	var sensors []uint
 	for _, v := range data {
 		if len(sensors) == 0 {
@@ -110,10 +115,35 @@ func (a *EventsAnalyzer) computeSpeed() {
 		}
 	}
 
+	// Modification: Trier les fausses détections s'il y en a (en fonction de la médiane)
+	Logging.Debug("STEP-2")
+	values := []float64{}
+	to_delete := []int{}
+	for i := 0; i < len(data); i++ {
+		values = append(values, data[i].data.GetValue())
+	}
+	median, _ := stats.Median(values)
+	stdev, _ := stats.StandardDeviation(values)
+	for i := 0; i < len(data); i++ {
+		if data[i].data.GetValue() < median-stdev || data[i].data.GetValue() > median+stdev {
+			to_delete = append(to_delete, i)
+		}
+	}
+	for left, right := 0, len(to_delete)-1; left < right; left, right = left+1, right-1 {
+		to_delete[left], to_delete[right] = to_delete[right], to_delete[left]
+	}
+	for _, i := range to_delete {
+		data = append(data[:i], data[i+1:]...)
+	}
+
+	// Verification: Si il n'y a qu'un sensor => Delete.
+	Logging.Debug("STEP-3")
 	if len(sensors) == 1 {
 		return
 	}
 
+	// Modification: S'assurer que le dernier sensor capté correspond à une extrémité
+	Logging.Debug("STEP-4")
 	for sensors[len(sensors)-1] != IR_SENSOR_ID_FIRST && sensors[len(sensors)-1] != IR_SENSOR_ID_LAST {
 		sensors = sensors[:len(sensors)-1]
 		to_delete := data[len(data)-1].Sensor
@@ -126,6 +156,8 @@ func (a *EventsAnalyzer) computeSpeed() {
 		}
 	}
 
+	// Modification: S'assurer que le premier sensor capté correspond à une extrémité
+	Logging.Debug("STEP-5")
 	for sensors[0] != IR_SENSOR_ID_FIRST && sensors[0] != IR_SENSOR_ID_LAST {
 		sensors = sensors[1:]
 		to_delete := data[len(data)-1].Sensor
@@ -138,6 +170,20 @@ func (a *EventsAnalyzer) computeSpeed() {
 		}
 	}
 
+	// Modification: Si plus de 3 sensors, ignorer
+	Logging.Debug("STEP-6")
+	if len(sensors) > 3 {
+		Logging.Warning("A detection have been made, but with too much false detections to analyze.")
+		return
+	}
+
+	// Modification: S'assurer que le premier sensor est différent du dernier
+	Logging.Debug("STEP-7")
+	if sensors[0] == sensors[len(sensors)-1] {
+		return
+	}
+
+	Logging.Debug("STEP-OK")
 	starting_time := data[0].Timestamp
 	ending_time := data[len(data)-1].Timestamp
 

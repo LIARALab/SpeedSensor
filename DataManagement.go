@@ -3,7 +3,7 @@ package speedsensor
 import (
 	"fmt"
 	Log "github.com/kevinchapron/BasicLogger/Logging"
-	"gonum.org/v1/gonum/stat"
+	"github.com/montanaflynn/stats"
 )
 
 var _analyzer *Analyzer
@@ -75,8 +75,8 @@ func (a *Analyzer) finishCalibration() {
 	}
 
 	for index, datas := range data {
-		avg[index] = stat.Mean(datas, nil)
-		std[index] = stat.StdDev(datas, nil)
+		avg[index], _ = stats.Mean(datas)
+		std[index], _ = stats.StandardDeviation(datas)
 
 		if avg[index] < IR_SENSOR_MIN_DISTANCE || avg[index] > IR_SENSOR_MAX_DISTANCE {
 			avg[index] = 0
@@ -113,6 +113,7 @@ func (a *Analyzer) dataReceived(b *ADSxDATA) {
 }
 func (a *Analyzer) eventReceived(event AnalyzerEvent) {
 	a.AnalyzerOfEvents.new_event <- &event
+	//Log.Debug("Data received: ",event.Sensor,event.data.GetValue())
 }
 
 func GetAnalyzer() *Analyzer {

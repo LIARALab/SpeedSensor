@@ -24,8 +24,8 @@ func (v *ADSxValue) String() string {
 	}
 	return fmt.Sprintf("%.3f", v.Value)
 }
-func (v *ADSxValue) GetValue() float64{
-	if v.Value < IR_SENSOR_MIN_DISTANCE || v.Value > IR_SENSOR_MAX_DISTANCE{
+func (v *ADSxValue) GetValue() float64 {
+	if v.Value < IR_SENSOR_MIN_DISTANCE || v.Value > IR_SENSOR_MAX_DISTANCE {
 		return 0
 	}
 	return v.Value

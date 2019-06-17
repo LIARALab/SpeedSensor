@@ -5,7 +5,7 @@ import (
 	Log "github.com/kevinchapron/BasicLogger/Logging"
 	"github.com/kevinchapron/FSHK/speedsensor"
 	"github.com/kevinchapron/FSHK/speedsensor/BLE"
-	"math"
+	"github.com/montanaflynn/stats"
 	"sort"
 	"time"
 )
@@ -14,6 +14,14 @@ var targets = []string{"ce:b4:75:29:91:b2", "c5:c8:af:cd:44:6b", "f1:ba:d3:a7:98
 
 var BLEDeviceDiscovered = func(items []BLE.BLEItem) {
 	Log.Info(fmt.Sprintf("Discovered %d items.", len(items)))
+	for _, item := range items {
+		if item.Addr != speedsensor.BLE_DEVICE_DEFAULT {
+			continue
+		}
+		if speedsensor.BLE_CONNECT_TO_PERIPHERAL {
+			BLE.GetBLEConnector().ConnectChannel <- item
+		}
+	}
 }
 
 var EventCallback = func(event speedsensor.FullEvent) {
@@ -38,21 +46,11 @@ var EventCallback = func(event speedsensor.FullEvent) {
 		if len(rssis) == 0 {
 			continue
 		}
-		sort.Sort(sort.Reverse(sort.Float64Slice(rssis)))
 
 		// Compute the RSSI value
-		median_rssi := rssis[int(len(rssis)/2)]
-		mean_rssi := 0.0
-		stdev_rssi := 0.0
-		for _, rssi := range rssis {
-			mean_rssi += rssi
-		}
-		mean_rssi /= float64(len(rssis))
-		for _, rssi := range rssis {
-			stdev_rssi += math.Pow(rssi-mean_rssi, 2)
-		}
-		stdev_rssi /= float64(len(rssis))
-		stdev_rssi = math.Sqrt(stdev_rssi)
+		median_rssi, _ := stats.Median(rssis)
+		mean_rssi, _ := stats.Mean(rssis)
+		stdev_rssi, _ := stats.StandardDeviation(rssis)
 
 		features = append(features, speedsensor.BLEFeatures{
 			Addr:   addr,
@@ -143,6 +141,7 @@ func main() {
 
 	// Initialization of the BLE interface
 	Log.Info("Starting BLE interface ...")
+	go BLE.GetBLEConnector().Run()
 	dev := BLE.GetBLEDevice()
 	dev.Scanner.AllowDuplicates = true
 	dev.Scanner.TimeScanned = 10 * time.Second

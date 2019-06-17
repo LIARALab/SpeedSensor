@@ -1,8 +1,8 @@
-package speedsensor
+package code
 
 import (
 	"github.com/kevinchapron/BasicLogger/Logging"
-	"github.com/kevinchapron/FSHK/speedsensor/BLE"
+	"github.com/kevinchapron/FSHK/speedsensor/code/BLE"
 	"github.com/montanaflynn/stats"
 	"sync"
 	"time"

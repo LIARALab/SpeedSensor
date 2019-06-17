@@ -1,4 +1,4 @@
-package speedsensor
+package code
 
 import "time"
 

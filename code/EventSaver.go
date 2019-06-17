@@ -1,10 +1,10 @@
-package speedsensor
+package code
 
 import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/kevinchapron/FSHK/speedsensor/BLE"
+	"github.com/kevinchapron/FSHK/speedsensor/code/BLE"
 	"os"
 	"strings"
 )

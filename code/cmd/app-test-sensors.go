@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	Log "github.com/kevinchapron/BasicLogger/Logging"
-	"github.com/kevinchapron/FSHK/speedsensor"
+	speedsensor "github.com/kevinchapron/FSHK/speedsensor/code"
 	"time"
 )
 
